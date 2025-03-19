@@ -20,7 +20,6 @@ def create_user(user: UserCreate, db: Session) -> str:
     """
     if db.query(User).filter(User.email == user.email).first():
         raise HTTPException(status_code=400, detail="Email already exists")
-
     hashed_password = get_password_hash(user.password)
     new_user = User(email=user.email, hashed_password=hashed_password)
     db.add(new_user)
