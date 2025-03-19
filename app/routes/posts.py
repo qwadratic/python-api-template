@@ -1,38 +1,38 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.auth import get_current_user
-from app.database import get_db
-from app.models import Post
-from app.schemas import PostCreate, PostResponse
-import redis
+from auth import get_current_user
+from database import get_db
+from models import User
+from schemas import PostCreate, PostListResponse, PostResponse
+from app.logic.posts import create_post, get_user_posts, delete_post
 
 router = APIRouter()
-cache = redis.Redis(host="localhost", port=6379, db=0)
 
 @router.post("/addpost", response_model=PostResponse)
-def add_post(post: PostCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    new_post = Post(text=post.text, owner_id=user.id)
-    db.add(new_post)
-    db.commit()
-    db.refresh(new_post)
-    return new_post
+def add_post(post: PostCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """
+    Handles adding a new post.
+    """
+    new_post = create_post(post, user, db)
+    return PostResponse(
+        id=new_post.id, 
+        text=new_post.text, 
+        owner_id=new_post.owner_id)
 
 @router.get("/getposts")
-def get_posts(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    cache_key = f"posts:{user.id}"
-    cached_posts = cache.get(cache_key)
-    if cached_posts:
-        return cached_posts
-    
-    posts = db.query(Post).filter(Post.owner_id == user.id).all()
-    cache.setex(cache_key, 300, str(posts))  # Cache for 5 minutes
-    return posts
+def get_posts(db: Session = Depends(get_db), user: User = Depends(get_current_user), response_model=PostListResponse):
+    """
+    Retrieves all posts for the authenticated user.
+    """
+    user_posts = get_user_posts(user, db)
+    return PostListResponse(posts=[
+        PostResponse(id=p.id, text=p.text, owner_id=p.owner_id)
+        for p in user_posts
+    ])
 
 @router.delete("/deletepost/{post_id}")
-def delete_post(post_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    post = db.query(Post).filter(Post.id == post_id, Post.owner_id == user.id).first()
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-    db.delete(post)
-    db.commit()
-    return {"message": "Post deleted successfully"}
+def remove_post(post_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """
+    Deletes a specific post owned by the authenticated user.
+    """
+    return delete_post(post_id, user, db)
