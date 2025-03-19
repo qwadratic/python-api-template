@@ -20,7 +20,7 @@ def add_post(post: PostCreate, db: Session = Depends(get_db), user: User = Depen
         owner_id=new_post.owner_id)
 
 @router.get("/getposts")
-def get_posts(db: Session = Depends(get_db), user: User = Depends(get_current_user), response_model=PostListResponse):
+def get_posts(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Retrieves all posts for the authenticated user.
     """

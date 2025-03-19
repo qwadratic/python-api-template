@@ -26,7 +26,7 @@ def create_user(user: UserCreate, db: Session) -> str:
     db.commit()
     db.refresh(new_user)
 
-    return create_access_token({"sub": new_user.id})
+    return create_access_token({"sub": str(new_user.id)})
 
 def authenticate_user(email: str, password: str, db: Session) -> str:
     """
@@ -47,4 +47,4 @@ def authenticate_user(email: str, password: str, db: Session) -> str:
     if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    return create_access_token({"sub": user.id})
+    return create_access_token({"sub": str(user.id)})
